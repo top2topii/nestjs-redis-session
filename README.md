@@ -1,5 +1,6 @@
 # This Repo is for testing passport session by redis
 - https://dnlytras.com/snippets/redis-session
+- https://dev.to/nestjs/setting-up-sessions-with-nestjs-passport-and-redis-210
 - Notes: redis module version is 3.
 
 ## Installation

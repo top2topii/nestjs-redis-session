@@ -1,39 +1,40 @@
-import { Logger } from '@nestjs/common';
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
+import { NestFactory } from "@nestjs/core"
+import { AppModule } from "./app.module"
 import { ConfigService } from '@nestjs/config';
-// import { WsAdapter } from '@nestjs/platform-ws';
+import RedisStore from 'connect-redis';
+import * as session from "express-session"
+import * as passport from "passport"
+import * as Redis from 'redis';
 
 async function bootstrap() {
-  const logger = new Logger('main');
+
   const app = await NestFactory.create(AppModule);
-  // app.useWebSocketAdapter((new WsAdapter()))
-  // app.useGlobalPipes(
-  //   new ValidationPipe({
-  //     validateCustomDecorators: true // <-- Add this to allow the validation pipe to work with our custom decorator
-  //   })
-  // );
 
-  const cors_options = {
-    "origin": ["https://dev-swap.openmeta.city", "https://localhost:8080", "http://localhost:8080"],
-    // "origin": "https://dev-swap.openmeta.city",
-    // "origin": "*",
-    "methods": "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
-    "preflightContinue": false,
-    "credentials": true,
-    "optionsSuccessStatus": 204
-  }
-  app.enableCors(cors_options);
   const configService = app.get(ConfigService);
-  const PORT = configService.get<number>('PORT') || 3000;
-  await app.listen(PORT);
 
-  const environment = configService.get<string>('NODE_ENV');
+  const redisClient = Redis.createClient({
+    host: configService.get<string>('REDIS_HOST'),
+    port: configService.get<number>('REDIS_PORT'),
+  });
 
-  logger.log(
-    `Server Start[Port:${PORT}, Environment:${environment}]\n`,
-  );
-  // console.log(`Server Port:${PORT}`);
+  // session을 위한 redisStore 생성
+  app.use(
+    session({
+      store: new RedisStore({ client: redisClient }),
+      saveUninitialized: false,
+      secret: configService.get<string>('SESSION_SECRET'),
+      resave: false,
+      // cookie settings
+      cookie: {
+        // sameSite: true,
+        httpOnly: true,
+        maxAge: 60000,
+      },
+    }),
+  ),
+  app.use(passport.initialize())
+  app.use(passport.session())
+
+  await app.listen(3000)
 }
-bootstrap();
-
+bootstrap()
